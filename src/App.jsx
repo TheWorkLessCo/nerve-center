@@ -40,6 +40,7 @@ function App() {
         <Layout>
           <Routes>
             <Route path="/" element={<MemoryView />} />
+            <Route path="/memory" element={<MemoryView />} />
             <Route path="/chat" element={<ChatView />} />
             <Route path="/activity" element={<ActivityView />} />
             <Route path="/docs" element={<DocsView />} />
