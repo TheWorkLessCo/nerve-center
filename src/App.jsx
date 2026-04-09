@@ -13,7 +13,7 @@ import ErrorBoundary from './components/ErrorBoundary'
 import { ToastProvider } from './components/Toast'
 
 function App() {
-  const { user, loading, signInWithEmail } = useAuth()
+  const { user, loading, signInWithPassword, signUp } = useAuth()
 
   if (loading) {
     return (
@@ -31,7 +31,7 @@ function App() {
   }
 
   if (!user) {
-    return <LoginView onLogin={signInWithEmail} />
+    return <LoginView onLogin={signInWithPassword} onSignUp={signUp} />
   }
 
   return (
