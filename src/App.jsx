@@ -8,7 +8,7 @@ import ActivityView from './views/ActivityView'
 import DocsView from './views/DocsView'
 import LinksView from './views/LinksView'
 import OpenClawView from './views/OpenClawView'
-import AltenzaView from './views/AltenzaView'
+import MissionControlView from './views/MissionControlView'
 import ErrorBoundary from './components/ErrorBoundary'
 import { ToastProvider } from './components/Toast'
 
@@ -46,7 +46,7 @@ function App() {
             <Route path="/docs" element={<DocsView />} />
             <Route path="/links" element={<LinksView />} />
             <Route path="/openclaw" element={<OpenClawView />} />
-            <Route path="/altenza" element={<AltenzaView />} />
+            <Route path="/mission-control" element={<MissionControlView />} />
           </Routes>
         </Layout>
       </ToastProvider>

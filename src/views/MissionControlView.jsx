@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ExternalLink, AlertCircle } from 'lucide-react'
 
-function OpenClawView() {
+function MissionControlView() {
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState(false)
 
@@ -13,7 +13,7 @@ function OpenClawView() {
       <div className="flex-shrink-0 h-12 flex items-center justify-between px-4 border-b border-white/10 bg-zinc-900">
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold text-white">
-            OpenClaw
+            Mission Control
           </span>
           <span className="w-1.5 h-1.5 rounded-full bg-zinc-600" />
           <span className="text-xs text-zinc-500 font-mono truncate max-w-xs">{url}</span>
@@ -33,7 +33,7 @@ function OpenClawView() {
       <div className="flex-1 relative bg-zinc-950">
         <iframe
           src={url}
-          title="OpenClaw"
+          title="Mission Control"
           className="w-full h-full border-0"
           onLoad={() => setLoaded(true)}
           onError={() => setError(true)}
@@ -43,7 +43,7 @@ function OpenClawView() {
           <div className="absolute inset-0 flex items-center justify-center bg-zinc-950">
             <div className="flex flex-col items-center gap-3">
               <div className="w-6 h-6 border-2 border-[#5DCAA5] border-t-transparent rounded-full animate-spin" />
-              <span className="text-sm text-zinc-500">Loading OpenClaw...</span>
+              <span className="text-sm text-zinc-500">Loading Mission Control...</span>
             </div>
           </div>
         )}
@@ -51,10 +51,10 @@ function OpenClawView() {
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-950">
             <AlertCircle size={32} className="text-red-500 mb-3" />
             <p className="text-sm font-medium text-white mb-1">
-              Unable to load OpenClaw
+              Unable to load Mission Control
             </p>
             <p className="text-xs text-zinc-500">
-              Check that the OpenClaw Gateway is running at {url}
+              Check that Mission Control is running on the VPS.
             </p>
           </div>
         )}
@@ -63,4 +63,4 @@ function OpenClawView() {
   )
 }
 
-export default OpenClawView
+export default MissionControlView

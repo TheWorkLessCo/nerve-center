@@ -27,7 +27,7 @@ export const AGENT_COLOR_MAP = {
 }
 
 export const QUICK_LINKS = [
-  { name: 'OpenClaw', url: 'http://72.62.83.62:4000', icon: 'OpenClaw', description: 'OpenClaw Gateway' },
+  { name: 'Mission Control', url: 'https://mc-proxy.n-tibbs.workers.dev', icon: 'OpenClaw', description: 'OpenClaw Mission Control' },
   { name: 'n8n', url: 'https://natetibbs.app.n8n.cloud', icon: 'N8N', description: 'Workflow automation' },
   { name: 'Supabase', url: 'https://supabase.com/dashboard', icon: 'Supabase', description: 'Database & auth' },
   { name: 'GHL', url: 'https://app.gohighlevel.com', icon: 'GHL', description: 'GoHighLevel CRM' },
