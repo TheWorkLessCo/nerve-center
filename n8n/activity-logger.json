@@ -1,0 +1,145 @@
+{
+  "name": "Nerve Activity Logger",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "nerve-activity-log",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": false
+        }
+      },
+      "id": "webhook-activity",
+      "name": "Webhook POST /nerve-activity-log",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [100, 300],
+      "webhookId": "nerve-activity-log"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Auth validation\nconst headerSecret = $input.first().json.headers?.['x-api-secret'] || $input.first().json.header?.['x-api-secret'] || '';\nconst expectedSecret = $env.API_SECRET || 'change-me-in-env';\n\nif (headerSecret !== expectedSecret) {\n  throw new Error('Unauthorized: invalid API secret');\n}\n\nconst body = $input.first().json.body || {};\n\n// Validate required fields\nif (!body.agent_name) {\n  throw new Error('agent_name is required');\n}\nif (!body.action) {\n  throw new Error('action is required');\n}\nif (!body.status) {\n  throw new Error('status is required');\n}\n\nreturn [{ json: { ...body, validated: true } }];"
+      },
+      "id": "auth-validate",
+      "name": "Auth Validate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [300, 300]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "table": "activity_log",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "agent_name": "={{ $json.agent_name }}",
+            "action": "={{ $json.action }}",
+            "status": "={{ $json.status }}",
+            "project": "={{ $json.project }}",
+            "metadata": "={{ JSON.stringify($json.metadata) }}"
+          }
+        },
+        "options": {
+          "timeout": 10
+        }
+      },
+      "id": "supabase-insert",
+      "name": "Insert Activity Log",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [500, 300],
+      "credentials": {
+        "supabase": {
+          "id": "1",
+          "name": "Supabase Credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract inserted record ID\nconst result = $input.first().json;\n\n// Handle different response formats from Supabase\nlet recordId = null;\n\nif (result.id) {\n  recordId = result.id;\n} else if (result[0] && result[0].id) {\n  recordId = result[0].id;\n} else if (typeof result === 'object') {\n  recordId = JSON.stringify(result);\n}\n\nreturn [{ json: { success: true, id: recordId } }];"
+      },
+      "id": "format-response",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "respond-success",
+      "name": "Respond Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "responseBody": "={{ { error: $json.message || 'Unknown error' } }}",
+        "responseCode": 400,
+        "options": {}
+      },
+      "id": "respond-error",
+      "name": "Respond Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [900, 500]
+    }
+  ],
+  "connections": {
+    "Webhook POST /nerve-activity-log": {
+      "main": [
+        [
+          {
+            "node": "Auth Validate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Auth Validate": {
+      "main": [
+        [
+          {
+            "node": "Insert Activity Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Activity Log": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Response": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v2"
+  },
+  "staticId": "nerve-activity-logger",
+  "tags": ["nerve-center", "activity", "logging"]
+}

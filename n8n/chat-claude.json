@@ -1,0 +1,184 @@
+{
+  "name": "Nerve Chat - Claude API Proxy",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "nerve-chat",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": false
+        }
+      },
+      "id": "webhook-chat",
+      "name": "Webhook POST /nerve-chat",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [100, 300],
+      "webhookId": "nerve-chat"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Auth validation\nconst headerSecret = $input.first().json.headers?.['x-api-secret'] || $input.first().json.header?.['x-api-secret'] || '';\nconst expectedSecret = $env.API_SECRET || 'change-me-in-env';\n\nif (headerSecret !== expectedSecret) {\n  throw new Error('Unauthorized: invalid API secret');\n}\n\nconst body = $input.first().json.body || {};\nconst message = body.message;\nconst history = body.history || [];\n\nif (!message) {\n  throw new Error('message is required');\n}\n\nreturn [{ json: { message, history, validated: true } }];"
+      },
+      "id": "auth-validate",
+      "name": "Auth Validate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [300, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.CLAUDE_API_KEY }}"
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "claude-sonnet-4-20250514"
+            },
+            {
+              "name": "max_tokens",
+              "value": 4096
+            },
+            {
+              "name": "system",
+              "value": "You are Nerve Center, Nate's personal AI operations assistant for The WorkLess Co. and Dallas Window Butler. You have access to agent activity logs, memory files, and system status. Be direct, no fluff, actionable."
+            },
+            {
+              "name": "messages",
+              "value": "={{ $json.body.history.concat([{ role: 'user', content: $json.body.message }]) }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30
+        }
+      },
+      "id": "claude-api-request",
+      "name": "Claude API Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [550, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "1",
+          "name": "Claude API Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract Claude's response content\nconst response = $input.first().json;\n\n// Handle different response formats\nlet content = '';\n\nif (response.content && Array.isArray(response.content)) {\n  // Claude message format with content blocks\n  content = response.content\n    .filter(block => block.type === 'text')\n    .map(block => block.text)\n    .join('\\n');\n} else if (response.error) {\n  throw new Error('Claude API error: ' + JSON.stringify(response.error));\n} else if (typeof response === 'string') {\n  content = response;\n} else {\n  content = JSON.stringify(response);\n}\n\nreturn [{ json: { response: content.trim() } }];"
+      },
+      "id": "extract-response",
+      "name": "Extract Response Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "respond-chat",
+      "name": "Respond to Chat",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [950, 300]
+    },
+    {
+      "parameters": {
+      "jsCode": "// Format messages for Claude API\n// Build the messages array combining history + current message\nconst input = $input.first().json;\nconst history = input.history || [];\nconst message = input.message;\n\n// Ensure history items have proper format\nconst formattedHistory = history.map(h => ({\n  role: h.role,\n  content: h.content\n}));\n\n// Add current message\nformattedHistory.push({\n  role: 'user',\n  content: message\n});\n\nreturn [{ json: { formattedHistory } }];"
+      },
+      "id": "format-messages",
+      "name": "Format Messages",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [450, 300]
+    }
+  ],
+  "connections": {
+    "Webhook POST /nerve-chat": {
+      "main": [
+        [
+          {
+            "node": "Auth Validate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Auth Validate": {
+      "main": [
+        [
+          {
+            "node": "Format Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Messages": {
+      "main": [
+        [
+          {
+            "node": "Claude API Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude API Request": {
+      "main": [
+        [
+          {
+            "node": "Extract Response Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Response Content": {
+      "main": [
+        [
+          {
+            "node": "Respond to Chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v2"
+  },
+  "staticId": "nerve-chat-claude",
+  "tags": ["nerve-center", "chat", "claude"]
+}

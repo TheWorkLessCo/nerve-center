@@ -1,0 +1,133 @@
+{
+  "name": "Nerve Docs CRUD / Logging",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "nerve-docs-log",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": false
+        }
+      },
+      "id": "webhook-docs",
+      "name": "Webhook POST /nerve-docs-log",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [100, 300],
+      "webhookId": "nerve-docs-log"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Auth validation\nconst headerSecret = $input.first().json.headers?.['x-api-secret'] || $input.first().json.header?.['x-api-secret'] || '';\nconst expectedSecret = $env.API_SECRET || 'change-me-in-env';\n\nif (headerSecret !== expectedSecret) {\n  throw new Error('Unauthorized: invalid API secret');\n}\n\nconst body = $input.first().json.body || {};\nconst operation = body.operation || 'unknown';\nconst docId = body.doc_id || null;\nconst metadata = body.metadata || {};\n\nreturn [{ json: {\n  operation,\n  doc_id: docId,\n  metadata,\n  validated: true\n}}];"
+      },
+      "id": "auth-validate",
+      "name": "Auth Validate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [300, 300]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "table": "activity_log",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "agent_name": "'docs-service'",
+            "action": "={{ 'doc_' + $json.operation }}",
+            "status": "'success'",
+            "project": "={{ $json.doc_id || 'unknown' }}",
+            "metadata": "={{ JSON.stringify($json.metadata) }}"
+          }
+        },
+        "options": {
+          "timeout": 10
+        }
+      },
+      "id": "log-to-activity",
+      "name": "Log to Activity Log",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [500, 300],
+      "credentials": {
+        "supabase": {
+          "id": "1",
+          "name": "Supabase Credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format success response\nreturn [{ json: {\n  success: true,\n  operation: $input.first().json.operation,\n  logged_at: new Date().toISOString()\n}}];"
+      },
+      "id": "format-response",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "respond-success",
+      "name": "Respond Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [900, 300]
+    }
+  ],
+  "connections": {
+    "Webhook POST /nerve-docs-log": {
+      "main": [
+        [
+          {
+            "node": "Auth Validate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Auth Validate": {
+      "main": [
+        [
+          {
+            "node": "Log to Activity Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Activity Log": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Response": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v2"
+  },
+  "staticId": "nerve-docs-crud",
+  "tags": ["nerve-center", "docs", "logging"]
+}

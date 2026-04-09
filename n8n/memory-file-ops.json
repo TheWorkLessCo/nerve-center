@@ -1,0 +1,456 @@
+{
+  "name": "Nerve Memory File Operations",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "nerve-memory-list",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": false
+        }
+      },
+      "id": "webhook-get-list",
+      "name": "Webhook GET /nerve-memory-list",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [100, 300],
+      "webhookId": "nerve-memory-list"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "nerve-memory-read",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": false
+        }
+      },
+      "id": "webhook-post-read",
+      "name": "Webhook POST /nerve-memory-read",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [100, 550],
+      "webhookId": "nerve-memory-read"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "nerve-memory-write",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": false
+        }
+      },
+      "id": "webhook-post-write",
+      "name": "Webhook POST /nerve-memory-write",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [100, 800],
+      "webhookId": "nerve-memory-write"
+    },
+    {
+      "parameters": {
+        "resource": "execute",
+        "command": "echo 'API secret check'",
+        "node": "SSH Client"
+      },
+      "id": "auth-check-list",
+      "name": "Auth Check (GET List)",
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [350, 300],
+      "credentials": {
+        "ssh": {
+          "id": "1",
+          "name": "SSH Credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "execute",
+        "command": "echo 'auth check'",
+        "node": "SSH Client"
+      },
+      "id": "auth-check-read",
+      "name": "Auth Check (POST Read)",
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [350, 550],
+      "credentials": {
+        "ssh": {
+          "id": "1",
+          "name": "SSH Credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "execute",
+        "command": "echo 'auth check'",
+        "node": "SSH Client"
+      },
+      "id": "auth-check-write",
+      "name": "Auth Check (POST Write)",
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [350, 800],
+      "credentials": {
+        "ssh": {
+          "id": "1",
+          "name": "SSH Credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "execute",
+        "command": "ls -la /root/.openclaw/workspace-*/MEMORY.md 2>/dev/null | awk '{print $NF}'",
+        "node": "SSH Client"
+      },
+      "id": "ssh-list-agents",
+      "name": "SSH: List Agent Memory Files",
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [600, 250],
+      "credentials": {
+        "ssh": {
+          "id": "1",
+          "name": "SSH Credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "execute",
+        "command": "ls -la /root/.openclaw/workspace-sabbath/*.md 2>/dev/null | awk '{print $NF}'",
+        "node": "SSH Client"
+      },
+      "id": "ssh-list-system",
+      "name": "SSH: List System Files",
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [600, 350],
+      "credentials": {
+        "ssh": {
+          "id": "1",
+          "name": "SSH Credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "execute",
+        "command": "cat /root/.openclaw/workspace-{{ $json.body.agentId }}/MEMORY.md 2>/dev/null || echo 'FILE_NOT_FOUND'",
+        "node": "SSH Client"
+      },
+      "id": "ssh-read-memory",
+      "name": "SSH: Read Memory File",
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [600, 550],
+      "credentials": {
+        "ssh": {
+          "id": "1",
+          "name": "SSH Credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "execute",
+        "command": "stat -c '%y' /root/.openclaw/workspace-{{ $json.body.agentId }}/MEMORY.md 2>/dev/null || echo 'UNKNOWN'",
+        "node": "SSH Client"
+      },
+      "id": "ssh-read-mtime",
+      "name": "SSH: Get Last Modified",
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [600, 650],
+      "credentials": {
+        "ssh": {
+          "id": "1",
+          "name": "SSH Credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "execute",
+        "command": "echo '{{ $json.body.content }}' > /root/.openclaw/workspace-{{ $json.body.agentId }}/MEMORY.md && echo 'WRITE_SUCCESS'",
+        "node": "SSH Client"
+      },
+      "id": "ssh-write-memory",
+      "name": "SSH: Write Memory File",
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [600, 800],
+      "credentials": {
+        "ssh": {
+          "id": "1",
+          "name": "SSH Credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Path sanitization: strip '..' and '/' from agentId\nconst body = $input.first().json.body || {};\nconst rawAgentId = body.agentId || '';\n\n// Remove path traversal attempts\nconst sanitizedAgentId = rawAgentId\n  .replace(/\\.\\./g, '')\n  .replace(/\\//g, '')\n  .replace(/\\\\/g, '')\n  .trim();\n\nif (!sanitizedAgentId) {\n  throw new Error('agentId is required');\n}\n\nif (rawAgentId !== sanitizedAgentId) {\n  throw new Error('Invalid agentId: path traversal detected');\n}\n\nreturn [{ json: { ...body, agentId: sanitizedAgentId } }];"
+      },
+      "id": "sanitize-agent-id",
+      "name": "Sanitize agentId (Path Traversal)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [450, 550]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Path sanitization for write\nconst body = $input.first().json.body || {};\nconst rawAgentId = body.agentId || '';\nconst rawContent = body.content || '';\n\n// Remove path traversal attempts from agentId\nconst sanitizedAgentId = rawAgentId\n  .replace(/\\.\\./g, '')\n  .replace(/\\//g, '')\n  .replace(/\\\\/g, '')\n  .trim();\n\nif (!sanitizedAgentId) {\n  throw new Error('agentId is required');\n}\n\nif (rawAgentId !== sanitizedAgentId) {\n  throw new Error('Invalid agentId: path traversal detected');\n}\n\n// Escape single quotes in content for shell safety\nconst safeContent = rawContent.replace(/'/g, \"'\\\\''\");\n\nreturn [{ json: { agentId: sanitizedAgentId, content: safeContent, rawContent: rawContent } }];"
+      },
+      "id": "sanitize-write",
+      "name": "Sanitize Write Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [450, 800]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse ls output for GET /nerve-memory-list\nconst agentOutput = $input.item.json.output || '';\nconst systemOutput = $input.item(1).json.output || '';\n\nconst parseFiles = (output) => {\n  return output\n    .split('\\n')\n    .filter(line => line.trim())\n    .map(line => line.replace(/.*\\//, '')); // strip path\n};\n\nreturn [{ json: {\n  agents: parseFiles(agentOutput),\n  system: parseFiles(systemOutput)\n}}];"
+      },
+      "id": "format-list-response",
+      "name": "Format List Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format read response\nconst readOutput = $input.item.json.output || '';\nconst mtimeOutput = $input.item(1).json.output || '';\n\nif (readOutput === 'FILE_NOT_FOUND') {\n  return [{ json: { error: 'Memory file not found', lastModified: null } }];\n}\n\nreturn [{ json: {\n  content: readOutput,\n  lastModified: mtimeOutput !== 'UNKNOWN' ? mtimeOutput : null\n}}];"
+      },
+      "id": "format-read-response",
+      "name": "Format Read Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [850, 600]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format write response\nconst writeOutput = $input.item.json.output || '';\n\nif (!writeOutput.includes('WRITE_SUCCESS')) {\n  return [{ json: { success: false, error: 'Write failed' } }];\n}\n\nreturn [{ json: {\n  success: true,\n  timestamp: new Date().toISOString()\n}}];"
+      },
+      "id": "format-write-response",
+      "name": "Format Write Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [850, 800]
+    },
+    {
+      "parameters": {
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "respond-list",
+      "name": "Respond to GET List",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "respond-read",
+      "name": "Respond to POST Read",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1050, 600]
+    },
+    {
+      "parameters": {
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "respond-write",
+      "name": "Respond to POST Write",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1050, 800]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Auth validation for all webhooks\nconst headerSecret = $inputs.first().json.headers?.['x-api-secret'] || $inputs.first().json.header?.['x-api-secret'] || '';\nconst expectedSecret = $env.API_SECRET || 'change-me-in-env';\n\nif (headerSecret !== expectedSecret) {\n  throw new Error('Unauthorized: invalid API secret');\n}\n\nreturn $input.all();"
+      },
+      "id": "auth-validator",
+      "name": "Auth Validator",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [250, 300]
+    }
+  ],
+  "connections": {
+    "Webhook GET /nerve-memory-list": {
+      "main": [
+        [
+          {
+            "node": "Auth Validator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Auth Validator": {
+      "main": [
+        [
+          {
+            "node": "SSH: List Agent Memory Files",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "SSH: List System Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SSH: List Agent Memory Files": {
+      "main": [
+        [
+          {
+            "node": "Format List Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SSH: List System Files": {
+      "main": [
+        [
+          {
+            "node": "Format List Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format List Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to GET List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook POST /nerve-memory-read": {
+      "main": [
+        [
+          {
+            "node": "Sanitize agentId (Path Traversal)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sanitize agentId (Path Traversal)": {
+      "main": [
+        [
+          {
+            "node": "SSH: Read Memory File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SSH: Read Memory File": {
+      "main": [
+        [
+          {
+            "node": "SSH: Get Last Modified",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SSH: Get Last Modified": {
+      "main": [
+        [
+          {
+            "node": "Format Read Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Read Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to POST Read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook POST /nerve-memory-write": {
+      "main": [
+        [
+          {
+            "node": "Sanitize Write Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sanitize Write Input": {
+      "main": [
+        [
+          {
+            "node": "SSH: Write Memory File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SSH: Write Memory File": {
+      "main": [
+        [
+          {
+            "node": "Format Write Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Write Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to POST Write",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v2"
+  },
+  "staticId": "nerve-memory-file-ops",
+  "tags": ["nerve-center", "memory", "ssh"]
+}
